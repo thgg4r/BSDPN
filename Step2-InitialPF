@@ -1,0 +1,273 @@
+OpenBSD default settings
+ are very secure, and no services are listening on the outside except 
+SSH. However SSH is listening on the default 22 port, accepting password
+ authentication.
+ Before configuring our server, it is best to block any inbound access 
+except from our computer public IP, and then take our time to lock down 
+SSH. 
+ Let's start by a basic pf ruleset:
+
+ 
+ 
+ # vi /etc/pf.conf
+ 
+
+ 
+ block in quick from ! x.x.x.x   # your public IP address 
+
+ pass out quick
+ 
+
+
+ 
+ Replace "x.x.x.x" by your computer public IP address you are connecting from. You can check on http://whoer.net/ if you don't know it. Of course this ruleset is temporary. Now apply it:
+ 
+ # pfctl -f /etc/pf.conf
+ 
+
+
+ 
+ Now we will create a regular user, that we will use afterwards. I'm 
+creating a user named "guillaume" just for the example, but pick the one
+ you want:
+
+  
+ # adduser
+ 
+
+
+ 
+ First time this command is ran, some general questions are asked, keep 
+the defaults. Then when a username is asked to create a user, 
+ enter yours, and keep the defaults for all other questions regarding 
+your user. When that is done, we want to be able to run commands as 
+root, in same way
+ we used "sudo" in previous OpenBSD versions. Since 5.8, we have to use 
+"doas" instead, which has an easier configuration syntax: 
+
+ 
+ # vi /etc/doas.conf
+ 
+
+ 
+ permit persist guillaume as root
+
+ 
+
+
+ 
+ The "persist" option makes doas command request the password the first 
+time, and then not asking it again for a period of time. If you do not 
+use this option,
+ a password is requested everytime doas command is used (which will 
+makes you crazy while configuring a server!). Now, logout from root, and
+ try your fresh new
+ user and enjoy the doas command from now on :-) Of course this 
+configuration is only temporary, afterwards you should restrict the 
+commands your user
+ is allowed to do. You can check the doas.conf manpage for more information.
+
+
+ 
+ We now have few things to do: create an SSH key, disable root login and
+ password base authentication, and make SSH listening on another port as
+ a bonus 
+ (to avoid automated scans adding "noise"
+ to our logs). For Linux/BSD clients you can create a key with -t ed25519, but for Windows your SSH client may only be compatible 
+ with keys created using -t rsa. In the following I will suppose you have a Windows client. 
+
+ 
+ $ cd /home/guillaume
+
+ $ ssh-keygen -t rsa
+
+ 
+
+
+ 
+ Then copy your public key to ~/.ssh/authorized_keys :
+
+ 
+ $ cd .ssh
+
+ $ cp id_rsa.pub authorized_keys
+
+ 
+
+
+ 
+ Copy the content of your private key "~/.ssh/id_rsa" (not 
+id_rsa.pub) on the remote computer you will use to connect to your 
+router, 
+ and set strict permissions on it. If on Linux or BSD, do a "chmod 600",
+ and you will be able to connect later with "ssh -i your_private_key 
+your_server_ip".
+ On Windows, I advise you to run a recent client such as Royal TS
+ to SSH into your server.
+ This software is free under 10 connections, but a licence is needed if 
+you have more. A regular Putty could do the trick, but last time I tried
+ it would
+ not connect (with the regular ppk file converted with puttygen), and 
+RoyalTS has some additional interesting features such as encrypting the 
+database,
+ multi-tab window, custom macro, and the absolutely vital possibility to
+ select custom icons :-)
+
+ 
+
+
+ 
+ Now modify your SSH server with this temporary configuration, the TCP 
+port 21598 being an example, choose the port you want. You can choose a 
+higher port to avoid scans,
+ or choose a port such as 443 to be able to connect to your server from 
+everywhere, when outbound TCP port 22 could be blocked:
+
+ 
+ $ doas vi /etc/ssh/sshd_config
+ 
+
+ 
+ # Modify default listening port
+
+ Port 21598
+
+
+
+ # Authentication 
+
+ PasswordAuthentication yes   # temporary
+
+ PermitRootLogin no
+
+ AllowUsers YOUR_USER
+
+ AuthorizedKeysFile      .ssh/authorized_keys
+
+ 
+ AllowTcpForwarding no
+
+ UsePrivilegeSeparation sandbox   # Default for new installations.
+
+ Subsystem       sftp    /usr/libexec/sftp-server
+
+ 
+
+
+ 
+ Restart sshd :
+
+ 
+ $ doas rcctl restart sshd
+ 
+
+
+ 
+ Now you can connect by SSH with your user and its password, and then 
+retrieve your id_rsa private key file. You will then need to convert it 
+to a ".ppk"
+ file to be able to use it to connect from Windows. One easy way to do 
+it is to use puttygen.
+ Just run this utility, open your id_rsa file from it, and convert it into id_rsa.ppk.
+
+
+ 
+ Connect from your remote computer with the private key, check that 
+connecting with your regular user and with the SSH key fully works.
+ Once it's working, modify the following line in /etc/ssh/sshd_config :
+
+ 
+ PasswordAuthentication no
+
+ 
+
+
+ 
+ Restart sshd :
+ 
+ $ doas rcctl restart sshd
+ 
+
+
+ 
+ On the client side, if you are using a Linux/BSD client, you can
+ enable SSH key fingerprint visual display in /etc/ssh/ssh_config which 
+displays your SSH key in hex format and an ACSCII graphic everytime you 
+connect. 
+ Once you get used to the ASCII graphic of your server, you should 
+notice if all of a sudden it is completely different (probably a 
+man-in-the-middle):
+
+ 
+ $ doas vi /etc/ssh/ssh_config
+ 
+
+ 
+ # Display fingerprint in hex and ASCII graphic when connecting
+
+ VisualHostKey yes
+
+ 
+
+
+ 
+ You now have a SSH listening on a non default port, root denied from 
+connecting in, password authentication disabled, and authencation based 
+on SSH keys and passphrase. For further SSH hardening, 
+ read the following excellent article
+ describing which protocols and ciphers
+ to use for optimum security. I may in the future update the SSH 
+settings given in this article to follow some of the advices from this 
+page.
+
+
+ 
+ Finally, to update the system and packages easily, I really liked to use "openup" from M:Tier.
+ However, starting
+ with OpenBSD 6.1, a new "syspatch" command appears to easily update the
+ base system. It won't take care of the additinal packages however, 
+which have to be taken care
+ of with the ports tree if you want to rely only on OpenBSD official 
+commands and repositories. You can learn more details at the 
+ patches FAQ. "pkg_add -u" only upgrades packages if you are running the -current flavor, not the -release flavor
+ we are running in our example. If you want the easiest way you can use openup from M:Tier, which is a third party not related to OpenBSD project, so you have to decide if you wish to trust 
+ their repository or not. If you want to use "openup":
+
+ 
+ $ ftp https://stable.mtier.org/openup
+
+ $ chmod +x openup
+
+ $ doas openup
+
+ ===> Checking for openup update
+
+ ===> Installing/updating binpatch(es)
+
+ ===> Updating package(s)
+
+ 
+
+
+ 
+ If however you want to use syspatch instead as I do, start it this way,
+ and then update the external packages using the ports tree:
+
+ 
+ $ doas syspatch
+
+ 
+
+
+ 
+ To fetch the ports tree, if you don't use openup, you can follow the 
+steps outlined in the patches FAQ link given above. Basically fetch the 
+ports tree with CVS,
+ run the "out-of-date" script to know which package needs an update, and
+ run a "make update" in the affected port directories. I'll try to 
+detail these steps later.
+
+
+ 
+ Here we go, a fully updated system. If you use the syspatch option "-c" it will list available updates. You can read syspatch manpage
+ for more information. Let's continue to the next part.
