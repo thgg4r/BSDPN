@@ -1,0 +1,5 @@
+Check the ruleset syntax, with the first command, and then apply it if no error returned:
+
+ $ doas pfctl -nf /etc/pf.conf
+
+ $ doas pfctl -f /etc/pf.conf
