@@ -1,10 +1,12 @@
-#!/usr/local/bin/python3.6
+#!/usr/local/bin/python3.5
 # File: block_intruders.py
 # Version: 1.0
+# Date: 2017/04/21
+# Blog: https://networkfilter.blogspot.com
 import subprocess
 
 # Modify below your home path, and your trusted public IP address you connect from
-badguys_file    = '/home/YOURNAME/badguys.txt'
+badguys_file    = '/home/guillaume/badguys.txt'
 pf_file         = '/etc/pf.conf'
 rule_tag        = 'new_guy'
 rule_id         = 0
