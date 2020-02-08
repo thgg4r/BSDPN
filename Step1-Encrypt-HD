@@ -1,0 +1,183 @@
+Enter Shell
+
+We need to create an encrypted volume before proceeding with the 
+installation. For that, we must escape to a Shell first (last option).
+  The OpenBSD FAQ linked above advises to write random data first to the
+ whole drive. Indeed, if we do not, it may be possible for an adversary 
+to tell
+  the difference between used and unused space. It costs nothing to do 
+it, except some patience, and if we encrypt the whole drive it's better 
+to do it
+  right. As a reminder, drive paths from now on are based on a SSD of 
+Vultr VPS, if you use a classical HDD, you will have to adjust the 
+commands.
+
+  
+  # dd if=/dev/random of=/dev/rsd0c bs=1m
+  
+
+
+ 
+  This command reads data from /dev/random and writes it to the whole 
+/dev/rds0c device. It takes 5 minutes on my server's 20GB SSD, but it 
+can take a lot
+  more time on bigger drives, especially on HDD. Now we need to 
+initialise the disk and create label for it:
+
+  
+  # fdisk -iy sd0
+
+  # disklabel -E sd0
+
+  
+
+
+  
+  Here, choose to create a partition using the entire disk, this way is 
+easier. Notice we choose a "RAID" filesystem here, as it is what will 
+allow us to enable
+  encryption afterwards:
+
+  
+  > a a
+
+  offset: [64]  
+
+  size: [41929586] *
+
+  FS type: [4.2BSD] RAID
+
+  > w
+
+  > q
+
+  No label changes.
+
+  
+
+
+  
+  Now we will create an encrypted volume. By default, from the bioctl man page,
+ there is 16 rounds of the KDF
+  algorithm used when converting your passphrase into key. This is a 
+defense against bruteforce, as it requires, for every passphrase to try,
+ to make 16 rounds
+  of it. It increases required CPU power, and will increase the time 
+necessary to crack the passphrase. However, 16 rounds, althought 
+conservative and being
+  able to run on even less powerful systems, is not that much against 
+someone having great CPU power to attack your passphrase. On a decent 
+and recent system
+  with fast SSD, upping it to 8192 rounds is transparent with no 
+noticable delay after having typed the passphrase to boot the server (on
+ my VPS server). 
+  However if I test it on a local VM on my computer, boot is delayed by 
+55 seconds, so it really depends on your hardware.
+
+
+  
+  
+
+  Choose here a strong passphrase! Having a high number of rounds with a
+ weak passphrase is useless. If in the future you want to modify your 
+passphrase,
+  from a user shell you will have to type this command:
+
+  
+  $ doas bioctl -P sd1
+
+  
+
+
+
+  Before coming back to the setup, as we created a new sd1 device, we have to make sure the nodes are created for it:
+
+  
+  # cd /dev
+
+  # sh MAKEDEV sd1
+
+  
+
+
+  
+  Last step, also from the official FAQ, is to zeroing the first chunk 
+of the new device, where should normally be a Master Boot Record and 
+disklabel instead
+  of some garbage:
+
+  
+  # dd if=/dev/zero of=/dev/rsd1c bs=1m count=1
+
+  # exit
+
+  
+
+  
+  
+  Now you come back to the setup prompt, with an sd0 device filled with 
+an sd1 encrypted volume. You just need to answer the questions, 
+essentially:
+
+  
+  Initial prompt : I (Install)
+
+  Keyboard layout: fr (for instance)
+
+  Hostname : MY-SERVER
+
+  Network : keep defaults and dhcp
+
+  Root password : choose a strong password, different than the boot passphrase
+
+  Start sshd : yes
+
+  Run X Window : no
+
+  Setup a user : no
+
+  Allow root ssh login : no
+
+  Timezone : choose your own (e.g Europe/Paris)
+
+  
+
+
+  
+  We do not create another user for now, and we deny root from 
+connecting to SSH. This implies that for the begining of the setup which
+ follows, you have to have an access
+  to the server's console, that Vultr for instance provides.
+
+
+  
+  Be carefull when the disk to install to is asked for, remember to 
+change the default from the unencrypted device to the encrypted volume:
+
+  
+  Which disk is the root disk? ('?' for details) [sd0] sd1
+
+  
+
+
+  
+  Then, for the following questions:
+
+  
+  Use Whole disk : whole
+
+  Use Auto layout : a
+
+  Location of sets : http
+
+  Package selection : -g* [enter]
+
+  Package selection : done
+
+  Location of sets : done
+
+  # reboot
+
+  
+
+  
