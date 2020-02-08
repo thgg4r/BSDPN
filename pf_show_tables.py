@@ -1,8 +1,6 @@
-#!/usr/local/bin/python3.5
+#!/usr/local/bin/python3.6
 # File: pf_show_tables.py
 # Version: 1.0
-# Date: 2017/04/21
-# Blog: https://networkfilter.blogspot.com
 import subprocess
 import re
 from collections import defaultdict, OrderedDict
@@ -82,7 +80,7 @@ count = 0
 max   = 5
 for ip in top_ips:
     if top_ips[ip] > 1:
-        print('%s : %d times ' % (ip, top_ips[ip]))127.0.0.1 : 5, 127.0.0.2 : 1, ...
+        print('%s : %d times ' % (ip, top_ips[ip])) # 127.0.0.1 : 5, 127.0.0.2 : 1, ...
         count +=1
         if count == max: break
 
