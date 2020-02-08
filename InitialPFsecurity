@@ -1,0 +1,8 @@
+
+ # nano /etc/pf.conf
+ 
+ 
+ block in quick from ! x.x.x.x   # client public IP 
+ pass out quick
+ 
+ 
