@@ -1,0 +1,94 @@
+Before going further, as "vi" is not my favorite text editor, let's install "nano" instead:
+
+ 
+ $ doas pkg_add nano
+
+ 
+
+
+ 
+  
+ A few tweaks we can make before configuring further our server. As 
+Vultr VPS are hosted on SSD, it is a good idea to add in the fstab file 
+the mount 
+ options "softdep" and "noatime". 
+ The first one increase disk performance, while the second will prevent the "last access time" file properties to be written:
+
+ 
+ $ sed 's/rw/rw,softdep,noatime/g' /etc/fstab > ./fstab_tmp
+
+ $ doas mv fstab_tmp /etc/fstab
+
+ $ cat /etc/fstab
+
+ 
+
+
+ 
+ Now, remember we are running on a fully encrypted volume. However 
+OpenBSD also encrypt the swap by default, therefore you can disable it 
+as it is 
+ not necessary in our context:
+
+ 
+ $ doas nano /etc/sysctl.conf
+
+ 
+
+ 
+ # Disable swap encryption (whole disk is already encrypted)
+
+ vm.swapencrypt.enable=0
+ 
+
+ 
+ 
+ Your server has booted with DHCP and has acquired its network 
+configuration from your VPS provider. As the server IP address is fixed,
+ 
+ I prefer setting manually the network configuration to avoid relying on
+ another server (VPS provider's DHCP and DNS) I do not control. 
+ Modify the following files according to your server public ip address, 
+mask, and gateway:
+ 
+ $ doas nano /etc/hostname.vio0
+ 
+
+ 
+ inet server_public_ip server_netmask
+ 
+
+
+ 
+ Add the gateway :
+
+ 
+ $ doas nano /etc/mygate
+ 
+
+ 
+ server_gateway_ip
+ 
+
+
+ 
+ Our server will forward traffic between its VPN interface and its default network interface. We have to enable forwarding:
+
+ 
+ $ doas sysctl net.inet.ip.forwarding=1
+
+ $ doas nano /etc/sysctl.conf
+ 
+
+ 
+ # Enable forwarding
+
+ net.inet.ip.forwarding=1
+ 
+
+
+ 
+ At this point you still rely on your provider DNS server in /etc/resolv.conf, we will take care of that later.
+
+   
+ 
